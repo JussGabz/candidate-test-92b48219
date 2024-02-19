@@ -94,6 +94,8 @@ def test_defaults():
     visitor = Visitor()
     assert visitor.created_at
     assert visitor.expires_at == visitor.created_at + Visitor.DEFAULT_TOKEN_EXPIRY
+    assert visitor.max_uses == Visitor.DEFAULT_TOKEN_MAX_USES
+    assert visitor.uses_count == Visitor.DEFAULT_TOKEN_START_COUNT
 
 
 @pytest.mark.parametrize(
@@ -108,3 +110,17 @@ def test_has_expired(expires_at, has_expired):
     visitor = Visitor()
     visitor.expires_at = expires_at
     assert visitor.has_expired == has_expired
+
+@pytest.mark.parametrize(
+        "uses_count,has_maxed",
+        (
+            (Visitor.DEFAULT_TOKEN_MAX_USES, False),
+            (4, True)
+        ),
+)
+def test_has_maximum_reach(uses_count, has_maxed):
+    visitor = Visitor()
+    visitor.uses_count = uses_count
+    assert visitor.has_maxed == has_maxed
+
+
