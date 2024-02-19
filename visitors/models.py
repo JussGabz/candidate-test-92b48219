@@ -11,7 +11,7 @@ from django.http.request import HttpRequest
 from django.utils.timezone import now as tz_now
 from django.utils.translation import gettext_lazy as _lazy
 
-from .settings import VISITOR_QUERYSTRING_KEY, VISITOR_TOKEN_EXPIRY
+from .settings import VISITOR_QUERYSTRING_KEY, VISITOR_TOKEN_EXPIRY, VISITOR_TOKEN_MAX_USES, VISITOR_TOKEN_START_COUNT
 
 
 class InvalidVisitorPass(Exception):
@@ -22,6 +22,8 @@ class Visitor(models.Model):
     """A temporary visitor (betwixt anonymous and authenticated)."""
 
     DEFAULT_TOKEN_EXPIRY = datetime.timedelta(seconds=VISITOR_TOKEN_EXPIRY)
+    DEFAULT_TOKEN_MAX_USES =  VISITOR_TOKEN_MAX_USES
+    DEFAULT_TOKEN_START_COUNT = VISITOR_TOKEN_START_COUNT
 
     uuid = models.UUIDField(default=uuid.uuid4)
     first_name = models.CharField(max_length=150, blank=True)
@@ -51,6 +53,8 @@ class Visitor(models.Model):
             "Set to False to disable the visitor link and prevent further access."
         ),
     )
+    max_uses = models.PositiveIntegerField(default=DEFAULT_TOKEN_MAX_USES)
+    uses_count = models.PositiveIntegerField(default=DEFAULT_TOKEN_START_COUNT)
 
     class Meta:
         verbose_name = "Visitor pass"
@@ -89,6 +93,11 @@ class Visitor(models.Model):
     def is_valid(self) -> bool:
         """Return True if the token is active and not yet expired."""
         return self.is_active and not self.has_expired
+    
+    @property
+    def has_maxed(self) -> bool:
+        """Return True if the token usage has reached the maximum use."""
+        return self.uses_count > self.max_uses
 
     def validate(self) -> None:
         """Raise InvalidVisitorPass if inactive or expired."""
@@ -96,6 +105,8 @@ class Visitor(models.Model):
             raise InvalidVisitorPass("Visitor pass is inactive")
         if self.has_expired:
             raise InvalidVisitorPass("Visitor pass has expired")
+        if self.has_maxed:
+            raise InvalidVisitorPass("Visitor pass has reached maximum usage")
 
     def serialize(self) -> dict:
         """
