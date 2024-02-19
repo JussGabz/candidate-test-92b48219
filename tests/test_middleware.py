@@ -66,6 +66,17 @@ class TestVisitorRequestMiddleware(TestVisitorMiddlewareBase):
         middleware(request)
         assert request.user.is_visitor
         assert request.visitor == visitor
+    
+    def test_increment_use_count(self, visitor: Visitor) -> None:
+        request = self.request(visitor.tokenise("/"))
+        middleware = VisitorRequestMiddleware(lambda r: r)
+        middleware(request)
+        assert request.user.is_visitor
+        assert request.visitor == visitor
+        # Retrieve Visitor Value without returning SQL Expression
+        # from -> https://stackoverflow.com/questions/33672920/django-db-models-f-combined-expression
+        request.visitor.refresh_from_db()
+        assert request.visitor.uses_count == 1
 
 
 @pytest.mark.django_db
