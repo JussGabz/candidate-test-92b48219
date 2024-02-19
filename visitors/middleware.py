@@ -7,6 +7,7 @@ from django.conf import settings
 from django.core.exceptions import MiddlewareNotUsed
 from django.http.request import HttpRequest
 from django.http.response import HttpResponse
+from django.db.models import F
 
 from . import session
 from .models import InvalidVisitorPass, Visitor
@@ -39,6 +40,12 @@ class VisitorRequestMiddleware:
         else:
             request.visitor = visitor
             request.user.is_visitor = True
+        
+        # Update the uses_count if visitor is accessing protected view
+        if request.user.is_visitor and request.visitor:
+            request.visitor.uses_count = F('uses_count') + 1
+            request.visitor.save()
+
         return self.get_response(request)
 
 
